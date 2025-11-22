@@ -1,0 +1,20 @@
+{
+  "name": "pbf-map-router",
+  "version": "1.0.0",
+  "description": "PBF map viewer with Dijkstra routing",
+  "main": "src/backend/server.js",
+  "scripts": {
+    "start": "cd pbf-map-router && node --max-old-space-size=8192 src/backend/server.js",
+    "dev": "cd pbf-map-router && nodemon --max-old-space-size=8192 src/backend/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "osm-pbf-parser-node": "^1.1.4",
+    "protobufjs": "^4.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PBF Map Router - Visual Flow</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="glass-ui.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1a1a1a; /* Minimal dark background */
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+            gap: 15px;
+            padding: 15px;
+        }
+        
+        .sidebar {
+            width: 350px;
+            /* Minimal glass morphism - Google Flow style */
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-radius: 20px;
+            padding: 20px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+        
+        .map-container {
+            flex: 1;
+            border-radius: 20px;
+            overflow: hidden;
+            /* Minimal glass morphism */
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            position: relative;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+        }
+        
+        h1 {
+            color: #ffffff;
+            margin-bottom: 10px;
+            font-size: 22px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .section {
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+        
+        .section:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .section-title {
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            color: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            width: 100%;
+            font-size: 14px;
+            margin-bottom: 10px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: rgba(108, 117, 125, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 12px;
+            padding: 8px;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(108, 117, 125, 0.4);
+        }
+        
+        .status {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-left: 4px solid rgba(255, 255, 255, 0.5);
+            color: #ffffff;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+        
+        .info-box {
+            background: #f9f9f9;
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+        
+        input[type="number"], input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.95);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        input[type="number"]:focus, input[type="text"]:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+        }
+        
+        input[type="number"]::placeholder, input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .node-item {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(15px);
+            margin-bottom: 8px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            color: rgba(255, 255, 255, 0.85);
+        }
+        
+        .node-item:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateX(5px) scale(1.02);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .node-item:active {
+            transform: translateX(3px) scale(0.98);
+        }
+        
+        .nodes-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        
+        .route-result {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            color: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            /* Minimal glass morphism - Google Flow style */
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            padding: 15px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-item {
+            margin-bottom: 10px;
+        }
+        
+        .control-item label {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+        
+        .control-item label:hover {
+            color: rgba(255, 255, 255, 1);
+        }
+        
+        .control-item input[type="checkbox"] {
+            margin-right: 6px;
+        }
+        
+        .control-item select {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.95);
+            margin-top: 5px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        
+        .control-item select:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+        
+        .control-item select:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .control-item select option {
+            background: rgba(26, 26, 26, 0.95);
+            color: rgba(255, 255, 255, 0.95);
+        }
+        
+        /* Animation for route flow */
+        @keyframes flow {
+            0% {
+                stroke-dashoffset: 1000;
+            }
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+        
+        .route-animated {
+            stroke-dasharray: 10, 5;
+            animation: flow 3s linear infinite;
+        }
+        
+        /* Pulse animation for nodes */
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.2);
+            }
+        }
+        
+        .node-pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        /* Clickable node styles */
+        .clickable-node {
+            cursor: pointer !important;
+        }
+        
+        .clickable-node:hover {
+            cursor: pointer !important;
+        }
+        
+        /* Selected node highlight - these are applied via JavaScript, not CSS */
+        
+        /* Gold beam blur effect - using multiple layers for shadow blur simulation */
+        .gold-beam-glow {
+            filter: blur(3px);
+        }
+        
+        /* Blue ripple animation keyframes */
+        @keyframes ripple-expand {
+            0% {
+                transform: scale(0.1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+        
+        .ripple-circle {
+            animation: ripple-expand 1s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>🗺️ Route Finder</h1>
+            
+            <div class="section">
+                <div class="section-title">STEP 1: Select Local PBF File</div>
+                <div class="nodes-list" id="fileList">
+                    <p style="color: #999; font-size: 12px;">Loading files...</p>
+                </div>
+                <div id="importStatus" class="status" style="display:none;"></div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">Map Statistics</div>
+                <div class="info-box">
+                    <strong>Nodes:</strong> <span id="nodeCount">0</span><br>
+                    <strong>Ways:</strong> <span id="wayCount">0</span>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">Available Nodes (First 100)</div>
+                <div class="nodes-list" id="nodesList">
+                    <p style="color: #999; font-size: 12px;">Upload a PBF file first</p>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">STEP 2: Find Route</div>
+                <input type="number" id="startNode" placeholder="Start Node ID" min="0">
+                <input type="number" id="endNode" placeholder="End Node ID" min="0">
+                <button class="btn" onclick="findRoute()" id="routeBtn" disabled>
+                    🔍 Find Route
+                </button>
+                <button class="btn btn-secondary" onclick="clearRoute()" id="clearBtn" disabled>
+                    🗑️ Clear Route
+                </button>
+                <div id="routeResult"></div>
+            </div>
+        </div>
+        
+        <div class="map-container">
+            <div id="map"></div>
+
+            <!-- Canvas overlay for high-performance blue wave animation -->
+            <canvas id="waveCanvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></canvas>
+
+            <div class="side-menu">
+                <div class="side-menu-item" title="Find Path" onclick="document.getElementById('routeBtn') && document.getElementById('routeBtn').click();">
+                    <i class="fa-solid fa-route"></i>
+                </div>
+                <div class="side-menu-item" title="Load / Select PBF" onclick="document.querySelector('.section') && document.querySelector('.section').scrollIntoView({ behavior: 'smooth', block: 'start' });">
+                    <i class="fa-solid fa-file-import"></i>
+                </div>
+                <div class="side-menu-item" title="Clear Route" onclick="document.getElementById('clearBtn') && document.getElementById('clearBtn').click();">
+                    <i class="fa-solid fa-broom"></i>
+                </div>
+                <div class="side-menu-item" title="Explore" onclick="if (typeof map !== 'undefined' && map) { map.setView(map.getCenter(), Math.max(map.getZoom() - 1, 3)); }">
+                    <i class="fa-solid fa-compass"></i>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div class="control-item">
+                    <label>
+                        <strong>Theme:</strong>
+                        <select id="themeSelect" onchange="changeTheme(this.value)" style="width: 100%; margin-top: 5px; padding: 5px; border-radius: 4px; border: 1px solid #ddd;">
+                            <option value="dark" selected>🌙 Dark</option>
+                            <option value="light">☀️ Light</option>
+                            <option value="neon">💙 Neon</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="control-item">
+                    <label>
+                        <input type="checkbox" id="animateRoute" checked onchange="toggleAnimation()">
+                        Animate Route
+                    </label>
+                </div>
+                <div class="control-item">
+                    <label style="display: block; margin-bottom: 5px;">
+                        Animation Speed:
+                    </label>
+                    <input type="range" id="animationSpeed" min="0" max="6" value="6" 
+                           oninput="updateAnimationSpeed(this.value)" 
+                           style="width: 100%;">
+                    <small id="speedLabel" style="font-size: 10px; color: #666;">200x</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+    <script>
+        let map;
+        let routePolyline = null;
+        let routeGlowLayers = [];
+        let nodeMarkers = [];
+        let routeNodeMarkers = [];
+        let startMarker = null;
+        let endMarker = null;
+        let nodeLayerGroup = null;
+        let routeLayerGroup = null;
+        let roadLayerGroup = null;
+        let animationLayerGroup = null;
+        let showNodesFlag = false; // Hidden by default for minimal look
+        let showRouteNodesFlag = false; // Hidden by default
+        let animateRouteFlag = true;
+        let animationSpeed = 200; // default to maximum effective speed factor
+        let currentNodes = [];
+        let roadPolylines = [];
+        let exploredMarkers = [];
+        let animationInProgress = false;
+        let currentTheme = 'dark'; // 'light', 'dark', 'neon'
+        let currentTileLayer = null;
+
+        // Canvas-based wave renderer (for blue fluid animation)
+        const waveRenderer = {
+            canvas: null,
+            ctx: null,
+            segments: [],
+            running: false,
+            startTime: 0,
+            // Total travel time for blue fluid wave (~8s for a snappier feel, still <15s)
+            duration: 8000,
+            init(mapInstance) {
+                this.canvas = document.getElementById('waveCanvas');
+                if (!this.canvas) return;
+                this.ctx = this.canvas.getContext('2d');
+                const resize = () => {
+                    const rect = mapInstance.getContainer().getBoundingClientRect();
+                    this.canvas.width = rect.width * window.devicePixelRatio;
+                    this.canvas.height = rect.height * window.devicePixelRatio;
+                    this.canvas.style.width = rect.width + 'px';
+                    this.canvas.style.height = rect.height + 'px';
+                    if (this.ctx) {
+                        this.ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+                    }
+                };
+                resize();
+                mapInstance.on('move zoom resize', resize);
+                // Clear canvas when zoom/pan starts to avoid a "stale image" overlay effect
+                mapInstance.on('movestart zoomstart', () => this.clear());
+            },
+            setSegmentsFromEdges(edges) {
+                if (!map) return;
+                // To keep animation smooth, limit the number of segments we draw
+                const maxSegments = 4000;
+                let sampled = edges;
+                if (edges.length > maxSegments) {
+                    const stride = Math.ceil(edges.length / maxSegments);
+                    sampled = edges.filter((_, idx) => idx % stride === 0);
+                }
+                this.segments = sampled.map(edge => ({
+                    from: L.latLng(edge.from.lat, edge.from.lon),
+                    to: L.latLng(edge.to.lat, edge.to.lon),
+                    iteration: edge.iteration || 0
+                }));
+            },
+            clear() {
+                if (!this.ctx || !this.canvas) return;
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            },
+            async play() {
+                if (!this.ctx || this.segments.length === 0) return;
+                this.running = true;
+                this.startTime = performance.now();
+                const maxIter = this.segments.reduce((m, s) => Math.max(m, s.iteration), 0) || 1;
+                const render = (now) => {
+                    if (!this.running) return;
+                    const elapsed = now - this.startTime;
+                    const tRaw = Math.min(elapsed / this.duration, 1); // 0..1 over duration
+                    // Ease for more fluid, liquid-like motion
+                    const t = tRaw < 0.5
+                        ? 2 * tRaw * tRaw
+                        : 1 - Math.pow(-2 * tRaw + 2, 3) / 2;
+                    this.clear();
+                    this.ctx.lineWidth = 2;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.lineJoin = 'round';
+                    this.ctx.strokeStyle = 'rgba(0, 217, 255, 0.85)';
+                    // Draw all visible segments in a single path for better performance
+                    const currentIter = t * maxIter;
+                    this.ctx.beginPath();
+                    this.segments.forEach(seg => {
+                        if (seg.iteration <= currentIter) {
+                            const p1 = map.latLngToContainerPoint(seg.from);
+                            const p2 = map.latLngToContainerPoint(seg.to);
+                            this.ctx.moveTo(p1.x, p1.y);
+                            this.ctx.lineTo(p2.x, p2.y);
+                        }
+                    });
+                    this.ctx.stroke();
+                    if (t < 1) {
+                        requestAnimationFrame(render);
+                    } else {
+                        this.running = false;
+                    }
+                };
+                return new Promise(resolve => {
+                    const loop = (time) => {
+                        render(time);
+                        if (!this.running) resolve(); else requestAnimationFrame(loop);
+                    };
+                    requestAnimationFrame(loop);
+                });
+            }
+        };
+        
+        // Theme configurations
+        const themes = {
+            light: {
+                tiles: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                roadColor: '#666666',
+                roadOpacity: 0.5,
+                roadWeight: 1,
+                waveColor: '#0066ff',
+                pathColor: '#ffd700', // Gold neon
+                startColor: '#0066ff',
+                endColor: '#ffd700' // Gold neon
+            },
+            dark: {
+                tiles: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                roadColor: '#888888',
+                roadOpacity: 0.4,
+                roadWeight: 1,
+                waveColor: '#00d9ff',
+                pathColor: '#ffd700', // Gold neon
+                startColor: '#00ffff',
+                endColor: '#ffd700' // Gold neon
+            },
+            neon: {
+                tiles: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                roadColor: '#444444',
+                roadOpacity: 0.3,
+                roadWeight: 1,
+                waveColor: '#00ffff', // Bright blue neon
+                pathColor: '#ffd700', // Gold neon for route
+                startColor: '#00ffff',
+                endColor: '#ffd700' // Gold neon
+            }
+        };
+
+        // Discrete animation speed steps (UI slider 0..6 → these factors)
+        const animationSpeedSteps = [1, 5, 10, 20, 50, 100, 200];
+        
+        // Initialize map
+        function initMap() {
+            try {
+                // Check if map container exists
+                const mapElement = document.getElementById('map');
+                if (!mapElement) {
+                    console.error('Map container not found!');
+                    return;
+                }
+                
+                // Initialize map with higher zoom capability
+                map = L.map('map', {
+                    center: [11.0, 78.0], // Default to Tamil Nadu region
+                    zoom: 7,
+                    zoomControl: true,
+                    minZoom: 2,
+                    maxZoom: 22, // Increased zoom capability
+                    zoomSnap: 0.25,
+                    zoomDelta: 0.5
+                });
+                
+                // Apply default dark theme
+                applyTheme('dark');
+                
+                // Create layer groups
+                nodeLayerGroup = L.layerGroup().addTo(map);
+                routeLayerGroup = L.layerGroup().addTo(map);
+                roadLayerGroup = L.layerGroup().addTo(map);
+                animationLayerGroup = L.layerGroup().addTo(map);
+
+                // Initialize wave canvas overlay
+                waveRenderer.init(map);
+                
+                // Force map to invalidate size after a short delay (fixes rendering issues)
+                setTimeout(() => {
+                    if (map) {
+                        map.invalidateSize();
+                    }
+                }, 100);
+                
+                // Add click handler with larger search radius for easier selection
+                map.on('click', async function(e) {
+                    // Check if click was on a marker (if so, marker's click handler will handle it)
+                    if (e.originalEvent.target.closest('.leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-interactive')) {
+                        return;
+                    }
+                    
+                    const lat = e.latlng.lat;
+                    const lon = e.latlng.lng;
+                    
+                    // Visual feedback - show click indicator (soft gold pulse)
+                    const clickIndicator = L.circleMarker([lat, lon], {
+                        radius: 8,
+                        color: '#ffd700',
+                        fillColor: '#ffd700',
+                        fillOpacity: 0.7,
+                        weight: 2
+                    }).addTo(map);
+                    
+                    // Animate click indicator
+                    let indicatorRadius = 8;
+                    const indicatorInterval = setInterval(() => {
+                        indicatorRadius += 2;
+                        if (indicatorRadius > 20) {
+                            clearInterval(indicatorInterval);
+                            map.removeLayer(clickIndicator);
+                        } else {
+                            clickIndicator.setStyle({ radius: indicatorRadius, fillOpacity: 0.8 - (indicatorRadius - 8) / 15 });
+                        }
+                    }, 50);
+                    
+                    // Find nearest node with larger search radius for easier selection
+                    try {
+                        const zoom = map.getZoom();
+                        const searchRadius = zoom > 15 ? 0.001 : zoom > 12 ? 0.005 : 0.01; // Larger radius for easier selection
+                        
+                        const response = await fetch('/api/search-nodes', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                minLat: lat - searchRadius,
+                                maxLat: lat + searchRadius,
+                                minLon: lon - searchRadius,
+                                maxLon: lon + searchRadius,
+                                limit: 100 // More nodes for better selection
+                            })
+                        });
+                        
+                        const nodes = await response.json();
+                        if (nodes.length > 0) {
+                            // Find closest node
+                            let closest = nodes[0];
+                            let minDist = distance(lat, lon, closest.lat, closest.lon);
+                            
+                            nodes.forEach(node => {
+                                const dist = distance(lat, lon, node.lat, node.lon);
+                                if (dist < minDist) {
+                                    minDist = dist;
+                                    closest = node;
+                                }
+                            });
+                            
+                            // Visual feedback - highlight selected node with clear gold glow
+                            const selectedMarker = L.circleMarker([closest.lat, closest.lon], {
+                                radius: 13,
+                                color: '#ffd700',
+                                fillColor: '#ffd700',
+                                fillOpacity: 1.0,
+                                weight: 4
+                            }).addTo(map);
+                            
+                            // Pulse animation
+                            let pulseRadius = 12;
+                            let pulseDir = 1;
+                            const pulseInterval = setInterval(() => {
+                                pulseRadius += pulseDir * 0.5;
+                                if (pulseRadius >= 16 || pulseRadius <= 12) {
+                                    pulseDir *= -1;
+                                }
+                                selectedMarker.setStyle({ radius: pulseRadius });
+                            }, 100);
+                            
+                            // Remove after 2 seconds
+                            setTimeout(() => {
+                                clearInterval(pulseInterval);
+                                map.removeLayer(selectedMarker);
+                            }, 2000);
+                            
+                            selectNode(closest.id, closest.lat, closest.lon);
+                        } else {
+                            // Show feedback that no node was found
+                            L.popup()
+                                .setLatLng([lat, lon])
+                                .setContent('<div style="text-align: center; padding: 5px;">No node found nearby<br><small>Try zooming in or clicking closer to a road</small></div>')
+                                .openOn(map);
+                            
+                            setTimeout(() => map.closePopup(), 2000);
+                        }
+                    } catch (err) {
+                        console.error('Error finding node:', err);
+                    }
+                });
+                
+                console.log('Map initialized successfully');
+            } catch (error) {
+                console.error('Error initializing map:', error);
+                alert('Error loading map. Please check console for details.');
+            }
+        }
+        
+        // Calculate distance between two points
+        function distance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+        
+        // Load available files on page load
+        async function loadAvailableFiles() {
+            try {
+                const response = await fetch('/api/list-files');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                const fileList = document.getElementById('fileList');
+                if (data.files && data.files.length > 0) {
+                    fileList.innerHTML = data.files.map(f => `
+                        <div class="node-item" onclick="loadLocalFile('${f}')">
+                            📁 ${f}
+                        </div>
+                    `).join('');
+                } else {
+                    fileList.innerHTML = '<p style="color: #999; font-size: 12px;">No PBF files found in data/ or uploads/ folders</p>';
+                }
+            } catch (err) {
+                console.error('Error loading files:', err);
+                document.getElementById('fileList').innerHTML = `<p style="color: #dc3545; font-size: 12px;">Error: ${err.message}</p>`;
+            }
+        }
+        
+        // Load local PBF file
+        async function loadLocalFile(filename) {
+            const status = document.getElementById('importStatus');
+            status.innerHTML = '⏳ Loading ' + filename + '...';
+            status.className = 'status';
+            status.style.display = 'block';
+            
+            // Clear previous data
+            clearMap();
+            
+            try {
+                const response = await fetch('/api/load-local-pbf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: filename })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+                
+                document.getElementById('nodeCount').textContent = data.nodeCount.toLocaleString();
+                document.getElementById('wayCount').textContent = data.wayCount.toLocaleString();
+                
+                // Get more nodes for better visualization (500 instead of 100)
+                const nodesResponse = await fetch('/api/nodes?limit=500');
+                const sampleNodes = await nodesResponse.json();
+                currentNodes = sampleNodes;
+                
+                console.log(`📍 Displaying ${sampleNodes.length} nodes on map`);
+                
+                // Don't display nodes - keep map minimal and clean
+                // displayNodes(sampleNodes); // Hidden for minimal look
+                updateNodesList(sampleNodes);
+                
+                // Load and display road network
+                loadRoadNetwork();
+                
+                // Auto-zoom to the bounding box of ALL nodes (not just sample)
+                // This ensures the map shows the entire loaded area (city/region)
+                if (data.bounds) {
+                    console.log('🗺️ Auto-zooming to loaded area:', data.bounds);
+                    console.log(`   Area: ${(data.bounds.maxLat - data.bounds.minLat).toFixed(4)}° × ${(data.bounds.maxLon - data.bounds.minLon).toFixed(4)}°`);
+                    
+                    const bounds = L.latLngBounds(
+                        [data.bounds.minLat, data.bounds.minLon],
+                        [data.bounds.maxLat, data.bounds.maxLon]
+                    );
+                    
+                    // Wait a bit for nodes to render, then zoom smoothly
+                    setTimeout(() => {
+                        map.fitBounds(bounds, {
+                            padding: [50, 50], // Add padding around the bounds
+                            maxZoom: 15, // Don't zoom in too much for large areas
+                            animate: true,
+                            duration: 1.5 // Smooth animation
+                        });
+                        
+                        console.log(`✅ Map centered on: ${data.bounds.centerLat.toFixed(4)}, ${data.bounds.centerLon.toFixed(4)}`);
+                    }, 300);
+                } else if (sampleNodes.length > 0) {
+                    // Fallback: use sample nodes if bounds not available
+                    console.log('⚠️ Using sample nodes for bounds (full bounds not available)');
+                    const bounds = L.latLngBounds(sampleNodes.map(n => [n.lat, n.lon]));
+                    setTimeout(() => {
+                        map.fitBounds(bounds.pad(0.1), { animate: true, duration: 1.0 });
+                    }, 300);
+                }
+                
+                status.className = 'status success';
+                status.innerHTML = `✅ Loaded ${data.nodeCount.toLocaleString()} nodes and ${data.wayCount.toLocaleString()} ways`;
+                
+                document.getElementById('routeBtn').disabled = false;
+                
+            } catch (err) {
+                status.className = 'status error';
+                status.innerHTML = `❌ Error: ${err.message}`;
+            }
+        }
+        
+        // Display nodes on map - HIDDEN for minimal look
+        function displayNodes(nodes) {
+            // Clear existing nodes
+            nodeLayerGroup.clearLayers();
+            nodeMarkers = [];
+            
+            // Nodes hidden by default for minimal, clean map
+            // Users can still select nodes via map clicks or the nodes list
+            return;
+        }
+        
+        // Update nodes list
+        function updateNodesList(nodes) {
+            const list = document.getElementById('nodesList');
+            if (nodes.length === 0) {
+                list.innerHTML = '<p style="color: #999; font-size: 12px;">No nodes</p>';
+                return;
+            }
+            
+            list.innerHTML = nodes.map(node => `
+                <div class="node-item" onclick="selectNode(${node.id}, ${node.lat}, ${node.lon})">
+                    <strong>Node ${node.id}</strong><br>
+                    ${node.lat.toFixed(4)}, ${node.lon.toFixed(4)}<br>
+                    <small style="color: #667eea;">Click to select</small>
+                </div>
+            `).join('');
+        }
+        
+        // Select node as start or end
+        function selectNode(nodeId, lat, lon) {
+            const startInput = document.getElementById('startNode');
+            const endInput = document.getElementById('endNode');
+            
+            // If start is empty, set as start
+            if (!startInput.value) {
+                startInput.value = nodeId;
+                L.popup()
+                    .setLatLng([lat, lon])
+                    .setContent(`<strong>✅ Start Node: ${nodeId}</strong><br>Click another node to set end point`)
+                    .openOn(map);
+            } 
+            // If start is set but end is empty, set as end
+            else if (!endInput.value) {
+                endInput.value = nodeId;
+                L.popup()
+                    .setLatLng([lat, lon])
+                    .setContent(`<strong>✅ End Node: ${nodeId}</strong><br>Click "Find Route" to calculate path`)
+                    .openOn(map);
+            } 
+            // Both are set, replace start
+            else {
+                startInput.value = nodeId;
+                endInput.value = '';
+                L.popup()
+                    .setLatLng([lat, lon])
+                    .setContent(`<strong>✅ New Start Node: ${nodeId}</strong><br>Click another node to set end point`)
+                    .openOn(map);
+            }
+        }
+        
+        // Set node (start or end) - for backward compatibility
+        function setNode(type, id) {
+            if (type === 'start') {
+            document.getElementById('startNode').value = id;
+            } else {
+                document.getElementById('endNode').value = id;
+            }
+        }
+        
+        // Load road network - render real OSM streets
+        async function loadRoadNetwork() {
+            try {
+                const response = await fetch('/api/ways?limit=5000');
+                const data = await response.json();
+                
+                if (data.ways && data.ways.length > 0) {
+                    console.log(`🛣️ Rendering ${data.ways.length} real street segments...`);
+                    
+                    // Clear existing roads
+                    roadLayerGroup.clearLayers();
+                    roadPolylines = [];
+                    
+                    // Render real streets with theme-based styling
+                    const theme = themes[currentTheme];
+                    data.ways.forEach(way => {
+                        if (way.coords.length >= 2) {
+                            const polyline = L.polyline(way.coords, {
+                                color: theme.roadColor,
+                                weight: theme.roadWeight,
+                                opacity: theme.roadOpacity,
+                                smoothFactor: 0, // No smoothing - keep real angles
+                                lineCap: 'round',
+                                lineJoin: 'round'
+                            }).addTo(roadLayerGroup);
+                            roadPolylines.push(polyline);
+                        }
+                    });
+                    
+                    console.log(`✅ Rendered ${roadPolylines.length} real street segments`);
+                }
+            } catch (err) {
+                console.error('Error loading roads:', err);
+            }
+        }
+        
+        // Find route with visualization and animation
+        async function findRoute() {
+            const start = document.getElementById('startNode').value;
+            const end = document.getElementById('endNode').value;
+            const resultDiv = document.getElementById('routeResult');
+            
+            if (!start || !end) {
+                resultDiv.innerHTML = '<div class="status error">Enter both node IDs</div>';
+                return;
+            }
+            
+            if (animationInProgress) {
+                resultDiv.innerHTML = '<div class="status error">Animation in progress, please wait...</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="status">⏳ Finding route with animation...</div>';
+            
+            // Clear previous route and animation
+            clearRoute();
+            clearAnimation();
+            
+            try {
+                const response = await fetch('/api/find-route', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        start: parseInt(start), 
+                        end: parseInt(end),
+                        animate: true // Enable animation
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok || !data.path) {
+                    resultDiv.innerHTML = `<div class="status error">❌ ${data.error || 'No path found'}</div>`;
+                    return;
+                }
+                
+                // Animate Dijkstra search - always run, but time-capped inside function
+                if (data.explored && animateRouteFlag) {
+                    await animateDijkstraSearch(data);
+                }
+                
+                // Draw final route with glow effect
+                visualizeRoute(data.pathCoords, data);
+                
+                // Minimal flash effect on entire map
+                flashMap();
+                
+                resultDiv.innerHTML = `
+                    <div class="route-result">
+                        <strong>✅ Route Found!</strong><br>
+                        Nodes in path: ${data.nodeCount}<br>
+                        Distance: ${data.distance.toFixed(3)} km<br>
+                        <small style="color: rgba(255,255,255,0.8);">Click route nodes to see details</small>
+                    </div>
+                `;
+                
+                document.getElementById('clearBtn').disabled = false;
+                
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="status error">Error: ${err.message}</div>`;
+            }
+        }
+        
+        // Cinematic fluid wave expansion - smooth road segment lighting
+        async function animateDijkstraSearch(routeData) {
+            if (!animateRouteFlag || !routeData.allVisitedEdges || routeData.allVisitedEdges.length === 0) {
+                animationInProgress = false;
+                return;
+            }
+            
+            animationInProgress = true;
+            clearAnimation();
+            
+            const allVisitedEdges = routeData.allVisitedEdges || [];
+            console.log(`🌊 Starting canvas-based fluid wave: ${allVisitedEdges.length} road segments`);
+            
+            // Feed edges to canvas-based wave renderer and play once
+            waveRenderer.setSegmentsFromEdges(allVisitedEdges);
+            await waveRenderer.play();
+            
+            animationInProgress = false;
+        }
+        
+        // Clear animation layers
+        function clearAnimation() {
+            animationLayerGroup.eachLayer(layer => {
+                if (layer._glowInterval) clearInterval(layer._glowInterval);
+                if (layer._pulseInterval) clearInterval(layer._pulseInterval);
+            });
+            animationLayerGroup.clearLayers();
+            exploredMarkers = [];
+            animationInProgress = false;
+        }
+        
+        // Visualize shortest path as gold/amber laser beam
+        function visualizeRoute(pathCoords, routeData) {
+            if (!pathCoords || pathCoords.length < 2) return;
+            
+            const coords = pathCoords.map(p => [p.lat, p.lon]);
+            
+            // Path beam with GOLD NEON effect
+            const routeTheme = themes[currentTheme];
+            const isNeonRoute = currentTheme === 'neon';
+            const goldColorRoute = '#ffd700'; // Gold neon
+            
+            // Outer glow - gold neon
+            const outerBeam = L.polyline([], {
+                color: goldColorRoute,
+                weight: isNeonRoute ? 16 : 14,
+                opacity: isNeonRoute ? 0.6 : 0.5,
+                lineCap: 'round',
+                lineJoin: 'round',
+                smoothFactor: 0
+            }).addTo(routeLayerGroup);
+            
+            // Middle glow - gold neon
+            const middleBeam = L.polyline([], {
+                color: goldColorRoute,
+                weight: isNeonRoute ? 12 : 10,
+                opacity: isNeonRoute ? 0.8 : 0.7,
+                lineCap: 'round',
+                lineJoin: 'round',
+                smoothFactor: 0
+            }).addTo(routeLayerGroup);
+            
+            // Main beam - bright gold neon
+            routePolyline = L.polyline([], {
+                color: goldColorRoute,
+                weight: isNeonRoute ? 7 : 6,
+                opacity: 1.0,
+                lineCap: 'round',
+                lineJoin: 'round',
+                smoothFactor: 0
+            }).addTo(routeLayerGroup);
+            
+            // Store glow layers for animation
+            routeGlowLayers = [outerBeam, middleBeam];
+            
+            // Animate beam drawing from start to end (fixed ~2s duration)
+            if (!animateRouteFlag || coords.length < 2) {
+                outerBeam.setLatLngs(coords);
+                middleBeam.setLatLngs(coords);
+                routePolyline.setLatLngs(coords);
+            } else {
+                animateBeamDrawing(coords);
+            }
+            
+            // Add start/end markers with gold neon
+            const goldColorMarkers = '#ffd700';
+            const startCoord = coords[0];
+            startMarker = L.circleMarker(startCoord, {
+                radius: isNeonRoute ? 7 : 6,
+                color: goldColorMarkers,
+                fillColor: goldColorMarkers,
+                fillOpacity: 1.0,
+                weight: isNeonRoute ? 4 : 3
+            }).addTo(routeLayerGroup);
+            startMarker.bindPopup(`<strong>START</strong><br>Node ${routeData.path[0]}`);
+            
+            const endCoord = coords[coords.length - 1];
+            endMarker = L.circleMarker(endCoord, {
+                radius: isNeonRoute ? 7 : 6,
+                color: goldColorMarkers,
+                fillColor: goldColorMarkers,
+                fillOpacity: 1.0,
+                weight: isNeonRoute ? 4 : 3
+            }).addTo(routeLayerGroup);
+            endMarker.bindPopup(`<strong>END</strong><br>Node ${routeData.path[routeData.path.length - 1]}`);
+            
+            // Fit bounds to show entire route
+            const bounds = L.latLngBounds(coords);
+            map.fitBounds(bounds.pad(0.2), { animate: true, duration: 1.0 });
+        }
+        
+        // Animate smooth path reveal with afterglow - GOLD NEON
+        function animateBeamDrawing(coords) {
+            if (!animateRouteFlag || coords.length < 2) return;
+            
+            const isNeonPath = currentTheme === 'neon';
+            const goldColorPath = '#ffd700'; // Gold neon
+            // Fixed duration for beam reveal: always ~2 seconds regardless of path length
+            const totalDuration = 2000; // ms
+            let startTime = performance.now();
+            const trailMarkers = [];
+            const maxTrailLength = 25;
+            
+            // Glowing head - gold neon
+            const headMarker = L.circleMarker(coords[0], {
+                radius: isNeonPath ? 14 : 12,
+                color: goldColorPath,
+                fillColor: goldColorPath,
+                fillOpacity: 1.0,
+                weight: isNeonPath ? 5 : 4
+            }).addTo(routeLayerGroup);
+            
+            const headGlow = L.circleMarker(coords[0], {
+                radius: isNeonPath ? 24 : 20,
+                color: goldColorPath,
+                fillColor: 'transparent',
+                fillOpacity: 0,
+                weight: isNeonPath ? 4 : 3,
+                opacity: 0.8
+            }).addTo(routeLayerGroup);
+            
+            let glowRadius = isNeonPath ? 12 : 10;
+            let glowDir = 1;
+            const glowInterval = setInterval(() => {
+                glowRadius += glowDir * 0.3; // Smoother pulse
+                const maxR = isNeonPath ? 14 : 12;
+                if (glowRadius >= maxR || glowRadius <= (isNeonPath ? 12 : 10)) glowDir *= -1;
+                headMarker.setStyle({ radius: glowRadius });
+                headGlow.setStyle({ radius: glowRadius + 6 });
+            }, 80);
+            
+            const animatePath = (timestamp) => {
+                const elapsed = timestamp - startTime;
+                const progress = Math.min(elapsed / totalDuration, 1);
+                
+                // Google Flow easing - smooth and natural
+                const eased = progress < 0.5 
+                    ? 2 * progress * progress 
+                    : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+                
+                const currentIndex = Math.floor(eased * (coords.length - 1));
+                const partialPath = coords.slice(0, currentIndex + 1);
+                
+                if (partialPath.length >= 2) {
+                    // Update beams - gold neon
+                    if (routeGlowLayers[0]) {
+                        routeLayerGroup.removeLayer(routeGlowLayers[0]);
+                        routeGlowLayers[0] = L.polyline(partialPath, {
+                            color: goldColorPath,
+                            weight: isNeonPath ? 16 : 14,
+                            opacity: isNeonPath ? 0.6 : 0.5,
+                            lineCap: 'round',
+                            lineJoin: 'round',
+                            smoothFactor: 0
+                        }).addTo(routeLayerGroup);
+                    }
+                    if (routeGlowLayers[1]) {
+                        routeLayerGroup.removeLayer(routeGlowLayers[1]);
+                        routeGlowLayers[1] = L.polyline(partialPath, {
+                            color: goldColorPath,
+                            weight: isNeonPath ? 12 : 10,
+                            opacity: isNeonPath ? 0.8 : 0.7,
+                            lineCap: 'round',
+                            lineJoin: 'round',
+                            smoothFactor: 0
+                        }).addTo(routeLayerGroup);
+                    }
+                    routeLayerGroup.removeLayer(routePolyline);
+                    routePolyline = L.polyline(partialPath, {
+                        color: goldColorPath,
+                        weight: isNeonPath ? 7 : 6,
+                        opacity: 1.0,
+                        lineCap: 'round',
+                        lineJoin: 'round',
+                        smoothFactor: 0
+                    }).addTo(routeLayerGroup);
+                    
+                    // Update head and trail - gold neon
+                    const currentCoord = partialPath[partialPath.length - 1];
+                    headMarker.setLatLng(currentCoord);
+                    headGlow.setLatLng(currentCoord);
+                    
+                    const trailMarker = L.circleMarker(currentCoord, {
+                        radius: isNeonPath ? 7 : 6,
+                        color: goldColorPath,
+                        fillColor: goldColorPath,
+                        fillOpacity: 0.5,
+                        weight: isNeonPath ? 3 : 2
+                    }).addTo(routeLayerGroup);
+                    trailMarkers.push(trailMarker);
+                    
+                    if (trailMarkers.length > maxTrailLength) {
+                        routeLayerGroup.removeLayer(trailMarkers.shift());
+                    }
+                    
+                    trailMarkers.forEach((marker, idx) => {
+                        const pos = (idx + 1) / trailMarkers.length;
+                        marker.setStyle({
+                            fillOpacity: pos * 0.5,
+                            radius: 3 + pos * 2
+                        });
+                    });
+                }
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animatePath);
+                } else {
+                    clearInterval(glowInterval);
+                    headMarker.setStyle({ radius: isNeonPath ? 12 : 10 });
+                }
+            };
+            
+            requestAnimationFrame(animatePath);
+            routePolyline._headMarker = headMarker;
+            routePolyline._headGlow = headGlow;
+            routePolyline._glowInterval = glowInterval;
+            routePolyline._trailMarkers = trailMarkers;
+        }
+        
+        // OLD FUNCTION - replaced by animateBeamDrawing
+        // Keeping for reference but not used
+        function animatePathHead_OLD(coords) {
+            if (!animateRouteFlag || coords.length < 2) return;
+            
+            let currentIndex = 0;
+            const delay = getAnimationDelay() * 2;
+            
+            // Create bright glowing head - like snake head
+            const headMarker = L.circleMarker(coords[0], {
+                radius: 12,
+                color: '#00ffff',
+                fillColor: '#00ffff',
+                fillOpacity: 1.0,
+                weight: 3
+            }).addTo(routeLayerGroup);
+            
+            // Add bright outer glow ring
+            const headGlow = L.circleMarker(coords[0], {
+                radius: 18,
+                color: '#00ffff',
+                fillColor: 'transparent',
+                fillOpacity: 0,
+                weight: 3,
+                opacity: 0.7
+            }).addTo(routeLayerGroup);
+            
+            // Add even larger glow for visibility
+            const headGlow2 = L.circleMarker(coords[0], {
+                radius: 25,
+                color: '#00ffff',
+                fillColor: 'transparent',
+                fillOpacity: 0,
+                weight: 2,
+                opacity: 0.4
+            }).addTo(routeLayerGroup);
+            
+            // Strong pulsing glow effect on head - bright and visible
+            let glowRadius = 12;
+            let glowDirection = 1;
+            const glowInterval = setInterval(() => {
+                glowRadius += glowDirection * 0.8;
+                if (glowRadius >= 15 || glowRadius <= 12) {
+                    glowDirection *= -1;
+                }
+                headMarker.setStyle({ radius: glowRadius });
+                headGlow.setStyle({ 
+                    radius: glowRadius + 6, 
+                    opacity: 0.5 + (glowRadius - 12) * 0.15 
+                });
+                headGlow2.setStyle({ 
+                    radius: glowRadius + 13, 
+                    opacity: 0.3 + (glowRadius - 12) * 0.1 
+                });
+            }, 80);
+            
+            // Create trailing fade effect - smooth gradient
+            const trailMarkers = [];
+            const maxTrailLength = 15;
+            
+            const moveHead = () => {
+                if (currentIndex >= coords.length) {
+                    // Animation complete
+                    clearInterval(glowInterval);
+                    return;
+                }
+                
+                // Update head position
+                const currentCoord = coords[currentIndex];
+                headMarker.setLatLng(currentCoord);
+                headGlow.setLatLng(currentCoord);
+                headGlow2.setLatLng(currentCoord);
+                
+                // Add to trail with smooth fade - like snake body
+                const trailMarker = L.circleMarker(currentCoord, {
+                    radius: 6,
+                    color: '#00ffff',
+                    fillColor: '#00ffff',
+                    fillOpacity: 0.5,
+                    weight: 2
+                }).addTo(routeLayerGroup);
+                trailMarkers.push(trailMarker);
+                
+                // Limit trail length
+                if (trailMarkers.length > maxTrailLength) {
+                    const oldMarker = trailMarkers.shift();
+                    routeLayerGroup.removeLayer(oldMarker);
+                }
+                
+                // Create smooth gradient fade in trail - like snake body fading
+                trailMarkers.forEach((marker, idx) => {
+                    const position = (idx + 1) / trailMarkers.length;
+                    const opacity = position * 0.7; // Brighter fade from 0 to 0.7
+                    const radius = 4 + position * 2; // Grow from 4 to 6
+                    marker.setStyle({ 
+                        fillOpacity: opacity,
+                        radius: radius,
+                        weight: 1 + position
+                    });
+                });
+                
+                currentIndex++;
+                setTimeout(moveHead, delay);
+            };
+            
+            moveHead();
+            
+            // Store for cleanup
+            routePolyline._headMarker = headMarker;
+            routePolyline._headGlow = headGlow;
+            routePolyline._headGlow2 = headGlow2;
+            routePolyline._glowInterval = glowInterval;
+            routePolyline._trailMarkers = trailMarkers;
+        }
+        
+        // Clear route
+        function clearRoute() {
+            if (routePolyline) {
+                if (routePolyline._headMarker) routeLayerGroup.removeLayer(routePolyline._headMarker);
+                if (routePolyline._headGlow) routeLayerGroup.removeLayer(routePolyline._headGlow);
+                if (routePolyline._glowInterval) clearInterval(routePolyline._glowInterval);
+                if (routePolyline._trailMarkers) {
+                    routePolyline._trailMarkers.forEach(m => routeLayerGroup.removeLayer(m));
+                }
+                routeLayerGroup.removeLayer(routePolyline);
+                routePolyline = null;
+            }
+            
+            // Clear glow layers
+            routeGlowLayers.forEach(layer => {
+                routeLayerGroup.removeLayer(layer);
+            });
+            routeGlowLayers = [];
+            
+            if (startMarker) {
+                routeLayerGroup.removeLayer(startMarker);
+                startMarker = null;
+            }
+            if (endMarker) {
+                routeLayerGroup.removeLayer(endMarker);
+                endMarker = null;
+            }
+            routeNodeMarkers.forEach(marker => {
+                routeLayerGroup.removeLayer(marker);
+            });
+            routeNodeMarkers = [];
+            
+            // Clear all route layers
+            routeLayerGroup.clearLayers();
+            
+            document.getElementById('routeResult').innerHTML = '';
+            document.getElementById('clearBtn').disabled = true;
+        }
+        
+        // Clear entire map
+        function clearMap() {
+            clearRoute();
+            clearAnimation();
+            nodeLayerGroup.clearLayers();
+            roadLayerGroup.clearLayers();
+            nodeMarkers = [];
+            roadPolylines = [];
+            currentNodes = [];
+        }
+        
+        // Toggle nodes visibility - always hidden for minimal look
+        function toggleNodes() {
+            showNodesFlag = false;
+            if (currentNodes.length > 0) {
+                displayNodes([]);
+            }
+        }
+        
+        // Toggle route nodes visibility - always hidden
+        function toggleRouteNodes() {
+            showRouteNodesFlag = false;
+            routeNodeMarkers.forEach(marker => {
+                routeLayerGroup.removeLayer(marker);
+            });
+        }
+        
+        // Apply theme to map
+        function applyTheme(themeName) {
+            currentTheme = themeName;
+            const theme = themes[themeName];
+            
+            if (currentTileLayer) {
+                map.removeLayer(currentTileLayer);
+            }
+            
+            currentTileLayer = L.tileLayer(theme.tiles, {
+                attribution: theme.attribution,
+                maxZoom: 19,
+                minZoom: 2,
+                subdomains: themeName === 'dark' || themeName === 'neon' ? 'abcd' : undefined
+            }).addTo(map);
+            
+            // Update road network colors
+            if (roadPolylines.length > 0) {
+                roadPolylines.forEach(polyline => {
+                    polyline.setStyle({
+                        color: theme.roadColor,
+                        weight: theme.roadWeight,
+                        opacity: theme.roadOpacity
+                    });
+                });
+            }
+            
+            console.log(`🎨 Theme: ${themeName}`);
+        }
+        
+        // Change theme
+        function changeTheme(themeName) {
+            applyTheme(themeName);
+            document.getElementById('themeSelect').value = themeName;
+        }
+        
+        // Minimal flash effect on map when route is found
+        function flashMap() {
+            const mapContainer = document.querySelector('.map-container');
+            if (!mapContainer) return;
+            
+            // Create flash overlay
+            const flashOverlay = document.createElement('div');
+            flashOverlay.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(255, 215, 0, 0.3);
+                pointer-events: none;
+                z-index: 2000;
+                border-radius: 16px;
+                animation: flashFade 0.6s ease-out forwards;
+            `;
+            
+            // Add flash animation
+            if (!document.getElementById('flashStyle')) {
+                const style = document.createElement('style');
+                style.id = 'flashStyle';
+                style.textContent = `
+                    @keyframes flashFade {
+                        0% { opacity: 0; }
+                        50% { opacity: 1; }
+                        100% { opacity: 0; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            mapContainer.appendChild(flashOverlay);
+            
+            // Remove after animation
+            setTimeout(() => {
+                if (flashOverlay.parentNode) {
+                    flashOverlay.parentNode.removeChild(flashOverlay);
+                }
+            }, 600);
+        }
+        
+        // Toggle route animation
+        function toggleAnimation() {
+            animateRouteFlag = document.getElementById('animateRoute').checked;
+            // Animation is handled in visualizeRoute function
+        }
+        
+        // Update animation speed (slider index → discrete factors)
+        function updateAnimationSpeed(speedIndex) {
+            const idx = Math.max(0, Math.min(animationSpeedSteps.length - 1, parseInt(speedIndex)));
+            animationSpeed = animationSpeedSteps[idx];
+            document.getElementById('speedLabel').textContent = `${animationSpeedSteps[idx]}x`;
+        }
+        
+        // Calculate delay based on speed (inverse relationship) - tuned for smoothness
+        function getAnimationDelay() {
+            // Map discrete speed factor to a normalized 0..1 range
+            const idx = Math.max(0, animationSpeedSteps.indexOf(animationSpeed));
+            const norm = idx / (animationSpeedSteps.length - 1); // 0 (1x) → 1 (200x)
+            const maxDelay = 40;
+            const minDelay = 4;
+            return maxDelay - norm * (maxDelay - minDelay);
+        }
+        
+        // Check if Leaflet is loaded
+        function checkLeaflet() {
+            if (typeof L === 'undefined') {
+                console.error('Leaflet library not loaded!');
+                document.getElementById('map').innerHTML = '<div style="padding: 20px; text-align: center; color: red;"><strong>Error:</strong> Leaflet map library failed to load. Please check your internet connection.</div>';
+                return false;
+            }
+            return true;
+        }
+        
+        // Init on load
+        window.addEventListener('load', () => {
+            console.log('Window loaded, initializing...');
+            if (!checkLeaflet()) return;
+            
+            // Wait a bit for DOM to be fully ready
+            setTimeout(() => {
+            initMap();
+            loadAvailableFiles();
+            }, 200);
+        });
+        
+        // Also try on DOMContentLoaded as fallback
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM content loaded');
+            if (!checkLeaflet()) return;
+            
+            if (!map) {
+                setTimeout(() => {
+                    initMap();
+                    loadAvailableFiles();
+                }, 200);
+            }
+        });
+    </script>
+</body>
+</html>
