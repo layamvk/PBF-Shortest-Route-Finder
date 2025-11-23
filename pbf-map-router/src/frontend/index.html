@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="glass-ui.css">
     <style>
@@ -404,15 +407,23 @@
                 </button>
                 <div id="routeResult"></div>
             </div>
-        </div>
-        
-        <div class="map-container">
-            <div id="map"></div>
-
-            <!-- Canvas overlay for high-performance blue wave animation -->
-            <canvas id="waveCanvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></canvas>
-
-            <div class="side-menu">
+            
+            <div class="section">
+                <div class="section-title">Settings</div>
+                <div class="control-item">
+                    <label for="animateRoute">
+                        <input type="checkbox" id="animateRoute" checked onchange="toggleAnimation()">
+                        Animate Route
+                    </label>
+                </div>
+                <div class="control-item">
+                    <label for="animationSpeed">Animation Speed</label>
+                    <input type="range" id="animationSpeed" min="0" max="6" value="6" oninput="updateAnimationSpeed(this.value)">
+                    <small id="speedLabel">200x</small>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
                 <div class="side-menu-item" title="Find Path" onclick="document.getElementById('routeBtn') && document.getElementById('routeBtn').click();">
                     <i class="fa-solid fa-route"></i>
                 </div>
@@ -426,24 +437,14 @@
                     <i class="fa-solid fa-compass"></i>
                 </div>
             </div>
+        </div>
+        
+        <div class="map-container">
+            <div id="map"></div>
 
-            <div class="controls">
-                <div class="control-item">
-                    <label>
-                        <strong>Theme:</strong>
-                        <select id="themeSelect" onchange="changeTheme(this.value)" style="width: 100%; margin-top: 5px; padding: 5px; border-radius: 4px; border: 1px solid #ddd;">
-                            <option value="dark" selected>🌙 Dark</option>
-                            <option value="light">☀️ Light</option>
-                            <option value="neon">💙 Neon</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="control-item">
-                    <label>
-                        <input type="checkbox" id="animateRoute" checked onchange="toggleAnimation()">
-                        Animate Route
-                    </label>
-                </div>
+            <!-- Canvas overlay for high-performance blue wave animation -->
+            <canvas id="waveCanvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></canvas>
+
                 <div class="control-item">
                     <label style="display: block; margin-bottom: 5px;">
                         Animation Speed:
@@ -534,37 +535,75 @@
                 this.running = true;
                 this.startTime = performance.now();
                 const maxIter = this.segments.reduce((m, s) => Math.max(m, s.iteration), 0) || 1;
+                const totalSegments = this.segments.length;
+                const ctx = this.ctx; // Cache context for faster access
+                
+                // Pre-calculate segment colors for better performance
+                const segmentColors = new Array(totalSegments);
+                for (let idx = 0; idx < totalSegments; idx++) {
+                    const gradPos = totalSegments <= 1 ? 0 : idx / (totalSegments - 1);
+                    if (gradPos < 0.7) {
+                        const t = gradPos / 0.7;
+                        const r = Math.round(0 + 255 * t);
+                        const b = Math.round(255 - 255 * t);
+                        segmentColors[idx] = `rgb(${r}, 217, ${b})`;
+                    } else {
+                        const t = (gradPos - 0.7) / 0.3;
+                        const g = Math.round(217 - (177 * t));
+                        const b = Math.round(0 + 80 * t);
+                        segmentColors[idx] = `rgb(255, ${g}, ${b})`;
+                    }
+                }
+                
                 const render = (now) => {
                     if (!this.running) return;
                     const elapsed = now - this.startTime;
-                    const tRaw = Math.min(elapsed / this.duration, 1); // 0..1 over duration
-                    // Ease for more fluid, liquid-like motion
-                    const t = tRaw < 0.5
-                        ? 2 * tRaw * tRaw
-                        : 1 - Math.pow(-2 * tRaw + 2, 3) / 2;
+                    const tRaw = Math.min(elapsed / this.duration, 1);
+                    // Linear easing for faster, smoother animation
+                    const t = tRaw;
+                    
                     this.clear();
-                    this.ctx.lineWidth = 2;
-                    this.ctx.lineCap = 'round';
-                    this.ctx.lineJoin = 'round';
-                    this.ctx.strokeStyle = 'rgba(0, 217, 255, 0.85)';
-                    // Draw all visible segments in a single path for better performance
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    
                     const currentIter = t * maxIter;
-                    this.ctx.beginPath();
-                    this.segments.forEach(seg => {
-                        if (seg.iteration <= currentIter) {
-                            const p1 = map.latLngToContainerPoint(seg.from);
-                            const p2 = map.latLngToContainerPoint(seg.to);
-                            this.ctx.moveTo(p1.x, p1.y);
-                            this.ctx.lineTo(p2.x, p2.y);
+                    let lastColor = null;
+                    ctx.beginPath();
+                    
+                    // Batch segments by color for optimal rendering
+                    for (let idx = 0; idx < totalSegments; idx++) {
+                        if (this.segments[idx].iteration <= currentIter) {
+                            const color = segmentColors[idx];
+                            
+                            // Switch color only when needed
+                            if (color !== lastColor) {
+                                if (lastColor !== null) {
+                                    ctx.stroke();
+                                    ctx.beginPath();
+                                }
+                                ctx.strokeStyle = color;
+                                lastColor = color;
+                            }
+                            
+                            const p1 = map.latLngToContainerPoint(this.segments[idx].from);
+                            const p2 = map.latLngToContainerPoint(this.segments[idx].to);
+                            ctx.moveTo(p1.x, p1.y);
+                            ctx.lineTo(p2.x, p2.y);
                         }
-                    });
-                    this.ctx.stroke();
+                    }
+                    
+                    if (lastColor !== null) {
+                        ctx.stroke();
+                    }
+                    
                     if (t < 1) {
                         requestAnimationFrame(render);
                     } else {
                         this.running = false;
                     }
                 };
+                
                 return new Promise(resolve => {
                     const loop = (time) => {
                         render(time);
