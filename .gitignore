@@ -8,6 +8,9 @@ node_modules/
 # Uploads directory
 uploads/
 
+# Data directory (for PBF files)
+data/
+
 # Logs
 *.log
 logs/
